@@ -81,6 +81,7 @@ import { toDBML } from "../../utils/exportAs/dbml";
 import { exportSavedData } from "../../utils/exportSavedData";
 import { nanoid } from "nanoid";
 import { getTableHeight } from "../../utils/utils";
+import { fromDBML } from "../../utils/importFrom/dbml";
 
 export default function ControlPanel({
   diagramId,
@@ -234,9 +235,9 @@ export default function ControlPanel({
             indices: table.indices.map((index) =>
               index.id === a.iid
                 ? {
-                    ...index,
-                    ...a.undo,
-                  }
+                  ...index,
+                  ...a.undo,
+                }
                 : index,
             ),
           });
@@ -412,9 +413,9 @@ export default function ControlPanel({
             indices: table.indices.map((index) =>
               index.id === a.iid
                 ? {
-                    ...index,
-                    ...a.redo,
-                  }
+                  ...index,
+                  ...a.redo,
+                }
                 : index,
             ),
           });
@@ -725,6 +726,54 @@ export default function ControlPanel({
   const open = () => setModal(MODAL.OPEN);
   const saveDiagramAs = () => setModal(MODAL.SAVEAS);
   const fullscreen = useFullscreen();
+
+
+  const overwriteDiagram = (importData) => {
+    setTables(importData.tables);
+    setRelationships(importData.relationships);
+    setAreas(importData.subjectAreas ?? []);
+    setNotes(importData.notes ?? []);
+    if (importData.title) {
+      setTitle(importData.title);
+    }
+    if (databases[database].hasEnums && importData.enums) {
+      setEnums(importData.enums);
+    }
+    if (databases[database].hasTypes && importData.types) {
+      setTypes(importData.types);
+    }
+  };
+
+
+  const export_to_sqlite = () => {
+    setModal(MODAL.CODE);
+    const src = jsonToSQLite({
+      tables: tables,
+      references: relationships,
+      types: types,
+      database: database,
+    });
+    setExportData((prev) => ({
+      ...prev,
+      data: src,
+      extension: "sql",
+    }));
+  }
+
+  const import_from_clipboard = async () => {
+    const dbmlString = await navigator.clipboard.readText();
+    let dbmlData;
+    try {
+      dbmlData = fromDBML(dbmlString);
+    } catch (error) {
+      const message = `${error.diags[0].name} [Ln ${error.diags[0].location.start.line}, Col ${error.diags[0].location.start.column}]: ${error.diags[0].message}`;
+      setError({ type: STATUS.ERROR, message });
+    }
+
+    overwriteDiagram(dbmlData);
+
+  }
+
 
   const menu = {
     file: {
@@ -1141,7 +1190,7 @@ export default function ControlPanel({
             },
           },
         ],
-        function: () => {},
+        function: () => { },
       },
       exit: {
         function: () => {
@@ -1365,7 +1414,7 @@ export default function ControlPanel({
             function: () => setSettings((prev) => ({ ...prev, mode: "dark" })),
           },
         ],
-        function: () => {},
+        function: () => { },
       },
       zoom_in: {
         function: zoomIn,
@@ -1866,6 +1915,28 @@ export default function ControlPanel({
                   </Dropdown>
                 ))}
               </div>
+
+              <Button
+                type="primary"
+                className="ml-2"
+                size="small"
+                onClick={async () => {
+                  await import_from_clipboard();
+                  export_to_sqlite();
+                }}
+              >
+                {"import dbml from clipboard"}
+              </Button>
+              <Button
+                type="primary"
+                className="ml-2 mr-2"
+                size="small"
+                onClick={() => export_to_sqlite()}
+              >
+                {"show sql"}
+              </Button>
+
+
               <Button
                 size="small"
                 type="tertiary"
