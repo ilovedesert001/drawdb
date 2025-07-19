@@ -767,7 +767,7 @@ export default function ControlPanel({
       dbmlData = fromDBML(dbmlString);
     } catch (error) {
       const message = `${error.diags[0].name} [Ln ${error.diags[0].location.start.line}, Col ${error.diags[0].location.start.column}]: ${error.diags[0].message}`;
-      setError({ type: STATUS.ERROR, message });
+      console.error(message);
     }
 
     overwriteDiagram(dbmlData);
